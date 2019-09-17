@@ -19,7 +19,9 @@ class Pruner:
 
     def clear_modules(self):
         self.convs = []
+        self.convname = []
         self.BNs = []
+        self.bnname = []
 
     def clear_cache(self):
         self.activation_maps = []
@@ -40,8 +42,10 @@ class Pruner:
                     module.register_backward_hook(backward_hook_fn)
                     module.register_forward_hook(forward_hook_fn)
                 self.convs.append(module)
+                self.convname.append(name)
             if isinstance(module, nn.BatchNorm2d):
                 self.BNs.append(module)  # save corresponding BN layer
+                self.bnname.append(name)
 
     def compute_rank(self):  # Compute ranks after each minibatch
         self.num_batches += 1
@@ -99,17 +103,31 @@ class Pruner:
             if cl in [9, 11, 13, 15]:  # These tensors are concat with an earlier tensor at the bottom.
                 offset = True
 
+            new_bn_params = []
             for param in [bn.weight, bn.bias, bn.running_mean, bn.running_var]:
-                param.data = self.remove(param, lc)
+                # param.data = self.remove(param, lc)
+                new_bn_params.append(self.remove(param, lc))
 
-            for param in [prev.weight, prev.bias]:
-                param.data = self.remove(param, lc)
+            new_bn = nn.BatchNorm2d(new_bn_params[0].shape[0])
+            for i, param in enumerate([new_bn.weight, new_bn.bias, new_bn.running_mean, new_bn.running_var]):
+                param.data = new_bn_params[i]
+            # print(new_bn)
+            # self.net._modules[self.bnname[cl]] = new_bn
+            # print(self.net)
 
-            if res:  # have residual
-                res.weight.data = self.remove(res.weight, lc, dim=1)
+            # self.BNs[cl] = new_bn
+            # self.net.add_module(self.bnname[cl], new_bn)
 
-            next.weight.data = self.remove(next.weight, -(lc+1) if offset else lc, dim=1)
-            # break
+            # for param in [prev.weight, prev.bias]:
+            #     param.data = self.remove(param, lc)
+            #
+            # if res:  # have residual
+            #     res.weight.data = self.remove(res.weight, lc, dim=1)
+            #
+            # next.weight.data = self.remove(next.weight, -(lc+1) if offset else lc, dim=1)
+
+            break
+
             # [print(param.shape) for param in [bn.weight, bn.bias, bn.running_mean, bn.running_var]]
             # [print(param.shape) for param in [prev.weight, bn.bias]]
             # [print(param.shape) for param in [next.weight, next.bias]]
@@ -117,7 +135,6 @@ class Pruner:
             #     [print(param.shape) for param in [res.weight, res.bias]]
 
     def remove(self, param, lc, dim=0):
-        param = param.data
         if dim == 0:  # BN params & biases (any vector) OR prev conv (remove filter)
             tmp1 = param[:lc]
             tmp2 = param[lc+1:]

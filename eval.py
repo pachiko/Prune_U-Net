@@ -53,7 +53,7 @@ def get_args():
     parser.add_option('-b', '--batch_size', dest='batch_size', default=10,
                       type='int', help='batch size')
     parser.add_option('-g', '--gpu', action='store_true', dest='gpu',
-                      default=False, help='use cuda')
+                      default=True, help='use cuda')
     parser.add_option('-c', '--load', dest='load',
                       default=False, help='load file model')
     parser.add_option('-s', '--scale', dest='scale', type='float',
@@ -93,14 +93,20 @@ if __name__ == '__main__':
     val = get_imgs_and_masks(iddataset['val'], dir_img, dir_mask, args.scale)
 
     net = UNet(n_channels=3, n_classes=1)
+
     if args.gpu:
         net.cuda()
-    net.load_state_dict(torch.load("TEST.pth"))
+    net.load_state_dict(torch.load("MODEL.pth"))
 
-    # pruner = Pruner(net)
+    pruner = Pruner(net)
     criterion = nn.BCELoss()
 
     for i, b in enumerate(batch(train, args.batch_size)):
+        print(i)
+        if i == 5:
+            print(net)
+            break
+
         net.zero_grad()
         imgs = np.array([i[0] for i in b]).astype(np.float32)
         true_masks = np.array([i[1] for i in b])
@@ -117,11 +123,10 @@ if __name__ == '__main__':
         loss = criterion(masks_pred, true_masks)
         loss.backward()
         # TODO: Seems like network definition doesn't change with parameters pruned
-        # pruner.compute_rank()
+        pruner.compute_rank()
 
-        # print(i)
-        # if i == 4:
-        #     pruner.pruning()
+        if i == 4:
+            pruner.pruning()
         #     torch.save(net.state_dict(), "TEST.pth")
             # for name, module in net.named_modules():
             #     if isinstance(module, nn.Conv2d):
