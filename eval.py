@@ -23,7 +23,8 @@ def eval_net(net, dataset, lendata, gpu=False, batch_size=8, is_loss=False):
             if gpu:
                 imgs = imgs.cuda()
                 true_masks = true_masks.cuda()
-                masks_pred = net(imgs).squeeze()
+
+            masks_pred = net(imgs)[0]
 
             if is_loss:
                 loss = criterion(masks_pred, true_masks)

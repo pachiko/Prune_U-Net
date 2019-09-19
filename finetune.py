@@ -2,37 +2,52 @@ import torch
 import numpy as np
 
 from tqdm import tqdm
-from utils import batch, AverageMeter
+from utils import batch, AverageMeter, get_imgs_and_masks
 
 
-def finetune(net, optimizer, criterion, train, log, path, iters=100, batch_size=2, gpu=True):
+def finetune(net, optimizer, criterion, trainset, log, path, iters=100, epochs=None, batch_size=2, gpu=True, scale=0.5):
     net.train()
     bce_meter = AverageMeter()
 
-    with tqdm(total=iters*batch_size) as progress_bar:
-        for i, b in enumerate(batch(train, batch_size)):
-            imgs = np.array([i[0] for i in b]).astype(np.float32)
-            true_masks = np.array([i[1] for i in b])
+    dir_img = 'data/train/'
+    dir_mask = 'data/train_masks/'
 
-            imgs = torch.from_numpy(imgs)
-            true_masks = torch.from_numpy(true_masks)
+    if epochs is None:  # Fine-tune using iterations of mini-batches
+        epochs = 1
+    else:  # Fine-tune using entire epochs
+        iters = None
 
-            if gpu:
-                imgs = imgs.cuda()
-                true_masks = true_masks.cuda()
+    for e in range(epochs):
+        # reset the generators
+        train = get_imgs_and_masks(trainset, dir_img, dir_mask, scale)
 
-            masks_pred = net(imgs).squeeze()
+        with tqdm(total=len(trainset)) as progress_bar:
+            for i, b in enumerate(batch(train, batch_size)):
+                imgs = np.array([i[0] for i in b]).astype(np.float32)
+                true_masks = np.array([i[1] for i in b])
 
-            loss = criterion(masks_pred, true_masks)
-            bce_meter.update(loss.item(), batch_size)
+                imgs = torch.from_numpy(imgs)
+                true_masks = torch.from_numpy(true_masks)
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+                if gpu:
+                    imgs = imgs.cuda()
+                    true_masks = true_masks.cuda()
 
-            progress_bar.update(batch_size)
-            progress_bar.set_postfix(BCE=bce_meter.avg)
+                masks_pred = net(imgs).squeeze()
 
+                loss = criterion(masks_pred, true_masks)
+                bce_meter.update(loss.item(), batch_size)
+
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                progress_bar.update(batch_size)
+                progress_bar.set_postfix(epoch=e, BCE=bce_meter.avg)
+
+                if i == iters:  # Stop finetuning after sufficient mini-batches
+                    break
+
+    log.info("Finished finetuning")
     log.info("Finetuned loss: {}".format(bce_meter.avg))
     torch.save(net.state_dict(), path)
     log.info('Saving finetuned to {}...'.format(path))

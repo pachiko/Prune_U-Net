@@ -21,14 +21,14 @@ def get_args():
                       default="initial", help='run name')
     parser.add_option('-b', '--batch_size', dest='batch_size', default=2,
                       type='int', help='batch size')
-    parser.add_option('-t', '--taylor_batches', dest='taylor_batches', default=2,
+    parser.add_option('-t', '--taylor_batches', dest='taylor_batches', default=500,
                       type='int', help='number of mini-batches used to calculate Taylor criterion')
-    parser.add_option('-p', '--prune_channels', dest='prune_channels', default=200,
+    parser.add_option('-p', '--prune_channels', dest='prune_channels', default=300,
                       type='int', help='number of channels to remove')
     parser.add_option('-g', '--gpu', action='store_true', dest='gpu',
                       default=False, help='use cuda')
     parser.add_option('-l', '--load', dest='load',
-                      default=False, help='load file model')
+                      default="MODEL.pth", help='load file model')
     parser.add_option('-c', '--channel_txt', dest='channel_txt',
                       default="model_channels.txt", help='load channel txt')
     parser.add_option('-s', '--scale', dest='scale', type='float',
@@ -36,9 +36,9 @@ def get_args():
     parser.add_option('-r', '--lr', dest='lr', type='float',
                       default=0.1, help='learning rate for finetuning')
     parser.add_option('-i', '--iters', dest='iters', type='int',
-                      default=100, help='number of mini-batches for fine-tuning')
+                      default=1500, help='number of mini-batches for fine-tuning')
     parser.add_option('-e', '--epochs', dest='epochs', type='int',
-                      default=5, help='number of epochs for final finetuning')
+                      default=None, help='number of epochs for final finetuning')
     (options, args) = parser.parse_args()
     return options
 
@@ -124,8 +124,6 @@ if __name__ == '__main__':
 
             # Tracking progress
             progress_bar.update(args.batch_size)
-            if i % 200 == 0 and i > 200:
-                log.info("Evaluated Taylor criterion for %i mini-batches" % i)
             if i == args.taylor_batches:  # Stop evaluating after sufficient mini-batches
                 log.info("Finished computing Taylor criterion")
                 break
@@ -142,9 +140,8 @@ if __name__ == '__main__':
     pruner.channel_save(save_txt)
     log.info('Pruned channels to {}...'.format(save_txt))
 
-    # TODO: Finetuning
     del net, pruner
-    net = UNet(n_channels=3, n_classes=1, f_channels=args.channel_txt)  # TODO: change back to save_txt
+    net = UNet(n_channels=3, n_classes=1, f_channels=save_txt)
     log.info("Re-Built model using {}...".format(save_txt))
     if args.gpu:
         net.cuda()
@@ -157,15 +154,11 @@ if __name__ == '__main__':
                           momentum=0.9,
                           weight_decay=0.0005)
 
-    # reset the generators
-    train = get_imgs_and_masks(iddataset['train'], dir_img, dir_mask, args.scale)
+    # Use epochs or iterations for fine-tuning
     save_file = osp.join(save_dir, "Finetuned.pth")
-    finetune(net, optimizer, criterion, train, log, save_file,
-             args.iters, args.batch_size, args.gpu)
 
-    # TODO: Add evaluation loop here
-    # epoch_loss = eval_net(net, train, len(iddataset['train']), args.gpu, args.batch_size, is_loss=True)
-    # log.info('Training Loss: {}'.format(epoch_loss))
+    finetune(net, optimizer, criterion, iddataset['train'], log, save_file,
+             args.iters, args.epochs, args.batch_size, args.gpu, args.scale)
 
     val_dice = eval_net(net, val,  len(iddataset['val']), args.gpu, args.batch_size)
     log.info('Validation Dice Coeff: {}'.format(val_dice))

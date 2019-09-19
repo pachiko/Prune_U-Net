@@ -95,12 +95,12 @@ class Pruner:
             # These tensors are concat with an earlier tensor at bottom.
             offset = True if cl in [9, 11, 13, 15] else False
 
-            # TODO: Wrong number of channels at up1 input
             # Remove indices of pruned parameters/channels
             if offset:
-                bottom = len(outchans[cl])
+                mapping = {9: 7, 11: 5, 13: 3, 15: 1}
+                top = self.convs[mapping[cl]].weight.shape[0]
                 try:
-                    inchans[cl + 1].remove(lc - bottom)  # it is searching for a -ve number to remove, but there are none
+                    inchans[cl + 1].remove(top + lc)  # it is searching for a -ve number to remove, but there are none
                     # However, the output channel of the previous layer (d4) is reduced
                     # So up1's input channel is larger than expected due to failed removal
                 except ValueError:
