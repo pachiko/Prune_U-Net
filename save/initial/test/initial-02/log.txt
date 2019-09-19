@@ -1,0 +1,26 @@
+[09.19.19 11:29:44] Args: {
+    "batch_size": 2,
+    "channel_txt": "save/initial/test/initial-01/pruned_channels.txt",
+    "epochs": 5,
+    "gpu": true,
+    "iters": 1500,
+    "load": "save/initial/test/initial-01/Finetuned.pth",
+    "lr": 0.1,
+    "prune_channels": 300,
+    "scale": 0.5,
+    "taylor_batches": 500
+}
+[09.19.19 11:29:44] Load split dataset
+[09.19.19 11:29:44] Built model using save/initial/test/initial-01/pruned_channels.txt...
+[09.19.19 11:29:45] Loading checkpoint from save/initial/test/initial-01/Finetuned.pth...
+[09.19.19 11:29:45] Evaluating Taylor criterion for 500 mini-batches
+[09.19.19 11:34:02] Finished computing Taylor criterion
+[09.19.19 11:34:02] Completed Pruning of 300 channels
+[09.19.19 11:34:02] Saving pruned to save/initial\test\initial-02\Pruned.pth...
+[09.19.19 11:34:02] Pruned channels to save/initial\test\initial-02\pruned_channels.txt...
+[09.19.19 11:34:02] Re-Built model using save/initial\test\initial-02\pruned_channels.txt...
+[09.19.19 11:34:02] Re-Loaded checkpoint from save/initial\test\initial-02\Pruned.pth...
+[09.19.19 11:44:22] Finished finetuning
+[09.19.19 11:44:22] Finetuned loss: 0.03725498061140703
+[09.19.19 11:44:23] Saving finetuned to save/initial\test\initial-02\Finetuned.pth...
+[09.19.19 11:46:01] Validation Dice Coeff: 0.8607254685379389
