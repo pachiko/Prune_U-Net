@@ -48,6 +48,7 @@ This performs ranking, removal, finetuning and evaluation in one pruning iterati
 
 ![alt text](https://raw.githubusercontent.com/kcang2/Prune_U-Net/master/prune_chart.png)
 ## Enhancement
+- [ ] Calculate FLOPs
 - [ ] Implement FLOPs Regularization
 ## Reference
 ### Dataset
