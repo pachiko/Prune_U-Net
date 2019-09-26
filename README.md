@@ -46,7 +46,7 @@ This performs ranking, removal, finetuning and evaluation in one pruning iterati
 | 20 | 64 | 18 | 46 | 71.9 | 2.6 |
 | 21 | 64 | 56 | 8 | 12.5 | 0.5 |  
 
-![alt text](https://imgur.com/a/iv7w2NV)
+![alt text](https://raw.githubusercontent.com/kcang2/Prune_U-Net/master/prune_chart.png)
 ## Enhancement
 - [ ] Implement FLOPs Regularization
 ## Reference
