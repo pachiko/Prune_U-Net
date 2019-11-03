@@ -3,6 +3,7 @@ import numpy as np
 
 from tqdm import tqdm
 from utils import batch, AverageMeter, get_imgs_and_masks
+from flops_counter import flops_count
 
 
 def finetune(net, optimizer, criterion, trainset, log, path, iters=100, epochs=None, batch_size=2, gpu=True, scale=0.5):
@@ -43,6 +44,9 @@ def finetune(net, optimizer, criterion, trainset, log, path, iters=100, epochs=N
                 optimizer.step()
                 progress_bar.update(batch_size)
                 progress_bar.set_postfix(epoch=e, BCE=bce_meter.avg)
+
+                if i == 0 and e == 0:
+                    log.info("FLOPs after pruning: \n{}".format(flops_count(net, imgs.shape[2:])))
 
                 if i == iters:  # Stop finetuning after sufficient mini-batches
                     break

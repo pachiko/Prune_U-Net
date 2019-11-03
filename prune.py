@@ -39,6 +39,8 @@ def get_args():
                       default=1500, help='number of mini-batches for fine-tuning')
     parser.add_option('-e', '--epochs', dest='epochs', type='int',
                       default=None, help='number of epochs for final finetuning')
+    parser.add_option('-f', '--flops', dest='flops_reg', type='float',
+                      default=.001, help='FLOPS regularization strength')
     (options, args) = parser.parse_args()
     return options
 
@@ -66,7 +68,8 @@ if __name__ == '__main__':
                                            "scale": args.scale,
                                            "lr": args.lr,
                                            "iters": args.iters,
-                                           "epochs": args.epochs},
+                                           "epochs": args.epochs,
+                                           "flops_reg": args.flops_reg},
                                           indent=4, sort_keys=True)))
 
     # Dataset
@@ -93,7 +96,7 @@ if __name__ == '__main__':
         net.load_state_dict(torch.load(args.load))
         log.info('Loading checkpoint from {}...'.format(args.load))
 
-    pruner = Pruner(net)  # Pruning handler
+    pruner = Pruner(net, args.flops_reg)  # Pruning handler
     criterion = nn.BCELoss()
 
     # Ranking on the train dataset
@@ -120,6 +123,8 @@ if __name__ == '__main__':
             loss.backward()
 
             # Compute Taylor rank
+            if i == 0:
+                log.info("FLOPs before pruning: \n{}".format(pruner.calc_flops()))
             pruner.compute_rank()
 
             # Tracking progress

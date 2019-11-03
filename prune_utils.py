@@ -3,9 +3,10 @@ import torch.nn as nn
 
 
 class Pruner:
-    def __init__(self, net):
+    def __init__(self, net, flops_reg):
         self.net = net.eval()
         # Initialize stuff
+        self.flops_reg = flops_reg
         self.clear_rank()
         self.clear_modules()
         self.clear_cache()
@@ -14,7 +15,7 @@ class Pruner:
 
     def clear_rank(self):
         self.ranks = {}  # accumulates Taylor ranks for modules
-        self.num_batches = 0  # how many minibatches so far
+        self.flops = []
 
     def clear_modules(self):
         self.convs = []
@@ -43,7 +44,6 @@ class Pruner:
                 self.BNs.append(module)  # save corresponding BN layer
 
     def compute_rank(self):  # Compute ranks after each minibatch
-        self.num_batches += 1
         self.gradients.reverse()
 
         for layer, act in enumerate(self.activation_maps):
@@ -52,20 +52,20 @@ class Pruner:
             if layer not in self.ranks.keys():  # no such entry
                 self.ranks.update({layer: taylor})
             else:
-                self.ranks[layer] += taylor  # C
+                self.ranks[layer] = .9*self.ranks[layer] + .1*taylor  # C
         self.clear_cache()
 
     def _rank_channels(self, prune_channels):
         total_rank = []  # flattened ranks of each channel, all layers
         channel_layers = []  # layer num for each channel
         layer_channels = []  # channel num wrt layer for each channel
-
+        self.flops[:] = [x / sum(self.flops) for x in self.flops]  # Normalize FLOPs
         for layer, ranks in self.ranks.items():
             # Average across minibatches
-            taylor = ranks/self.num_batches  # C
+            taylor = ranks  # C
             # Layer-wise L2 normalization
-            taylor = taylor / torch.sqrt(torch.sum(taylor**2))
-            total_rank.append(taylor)  # C
+            taylor = taylor / torch.sqrt(torch.sum(taylor**2))  # C
+            total_rank.append(taylor + self.flops[layer]*self.flops_reg)
             channel_layers.extend([layer]*ranks.shape[0])
             layer_channels.extend(list(range(ranks.shape[0])))
 
@@ -147,3 +147,21 @@ class Pruner:
         with open(path, 'w') as f:
             for item in chans:
                 f.write("%s\n" % item)
+
+    def calc_flops(self):
+        """Calculate flops per tensor channel. Only consider flops
+        of conv2d that produces said feature map
+        """
+        # conv2d: slides*(kernel mult + kernel sum + bias)
+        # kernel_sum = kernel_mult - 1
+        # conv2d: slides*(2*kernel mult)
+
+        # batchnorm2d: 4*slides
+
+        # Remove unnecessary constants from calculation
+
+        for i, c in enumerate(self.convs[:-1]):
+            H, W = self.gradients[i].shape[2:]
+            O, I, KH, KW = c.weight.shape
+            self.flops.append(H*W*KH*KW*I)
+        return self.flops
