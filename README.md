@@ -9,7 +9,7 @@ This performs ranking, removal, finetuning and evaluation in one pruning iterati
 ```python prune.py --load YOUR_MODEL.pth --channel_txt YOUR_CHANNELS.txt```
 ## Results
 
-Without FLOPs Regularization:  
+### Without FLOPs Regularization:  
 
 | Iteration  | Ranking Iterations | Pruned Channels | Finetuning Epochs/Iterations | Validation DICE | File Size (MB) |
 | --- | --- | --- | --- | --- | --- |
@@ -22,7 +22,7 @@ Without FLOPs Regularization:
 * Size Reduction: ```(52.4 – 27.2) / 52.4 x 100% = 48.1%```  
 * Validation Dice Loss: ```98.53% – 95.5% = 3.03%```
 
-With FLOPs Regularization (```strength=0.001```)
+### With FLOPs Regularization (```strength=0.001```)
 
 | Iteration  | Ranking Iterations | Pruned Channels | Finetuning Epochs/Iterations | Validation DICE | File Size (MB) |
 | --- | --- | --- | --- | --- | --- |
